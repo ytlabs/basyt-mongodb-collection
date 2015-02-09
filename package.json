@@ -1,0 +1,29 @@
+{
+  "name": "basyt-mongodb-collection",
+  "version": "0.2.0",
+  "description": "basyt mongodb database connection package. See basyt for detailed information.",
+  "keywords": [
+    "basyt connection",
+    "mongodb"
+  ],
+  "main": "index.js",
+  "homepage": "https://github.com/ytlabs/basyt-mongodb-collection",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/ytlabs/basyt-mongodb-collection.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ytlabs/basyt-mongodb-collection/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Kamil Sulubulut",
+    "url": "http://github.com/kokeksibir/"
+  },
+  "dependencies": {
+    "bluebird": "^2.3.11",
+    "lodash": "^2.4.1",
+    "promised-mongo": "^0.11.1",
+    "basyt-base-collection": "git://github.com/ytlabs/basyt-mongodb-collection.git"
+  }
+}
