@@ -4,7 +4,7 @@ _ = require('lodash');
 var util = require("util"),
     MongoDB = require("./connector"),
     adapter = require('./adapter'),
-    BasytBaseCollection = require('./basyt-base-collection');
+    BasytBaseCollection = require('basyt-base-collection');
 
 module.exports = MongoDBCollection;
 
