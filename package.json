@@ -24,6 +24,6 @@
     "bluebird": "^2.3.11",
     "lodash": "^2.4.1",
     "promised-mongo": "^0.11.1",
-    "basyt-base-collection": "git://github.com/ytlabs/basyt-mongodb-collection.git"
+    "basyt-base-collection": "git://github.com/ytlabs/basyt-base-collection.git"
   }
 }
