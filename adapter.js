@@ -32,22 +32,29 @@ var adapter = {
         var that = this;
         return this.collection.insert(entity)
             .then(function (result) {
+                var entity_id;
                 if (that.idField === '_id') {
+                    entity_id = result._id;
                     that.adapter.fixIdField(result);
                 }
+                else {
+                    entity_id = result[that.idField];
+                    delete result._id;
+                } 
                 _.forEach(that.eventNames, function (name) {
                     var channelName = _.template(name, result);
                     that.publisher.publish(channelName, JSON.stringify({
                         eventName: 'entity:update:' + that.name,
-                        data: {action: 'create', entity_id: result[that.idField]}
+                        data: {action: 'create', entity_id: entity_id}
                     }));
                 });
                 return that.afterSave(result, entity);
             });
     },
-    read: function (query, options) {
-        var that = this;
+    read: function (original_query, options) {
+        var that = this, query = _.clone(original_query);
         options = options || {depth: 0};
+
         return this.collection.findOne(query, options.projection || this.projection)
             .then(function (result) {
                 if (result === null) {
@@ -99,8 +106,8 @@ var adapter = {
 
             });
     },
-    update: function (query, update, options) {
-        var that = this;
+    update: function (original_query, original_update, options) {
+        var that = this, query = _.clone(original_query), update = _.clone(original_update);
         options = options || {upsert: false};
         if (options.multi === true) {
             return this.collection.update(query, update, options)
@@ -119,24 +126,27 @@ var adapter = {
                     if (result === null) {
                         throw new process.basyt.ErrorDefinitions.BasytError({message: 'Not Found'}, 404);
                     }
+                    var entity_id;
                     if (that.idField === '_id') {
+                        entity_id = result[0]._id;
                         that.adapter.fixIdField(result[0]);
                     }
                     else {
+                        entity_id = result[0][that.idField];
                         delete result[0]._id;
-                    }
+                    }                    
                     _.forEach(that.eventNames, function (name) {
                         that.publisher.publish(_.template(name, result[0]), JSON.stringify({
                             eventName: 'entity:update:' + that.name,
-                            data: {action: 'update', entity_id: result[0][that.idField]}
+                            data: {action: 'update', entity_id: entity_id}
                         }));
                     });
                     return that.afterSave(result[0], update, query, options);
                 });
         }
     },
-    'delete': function (query, options) {
-        var that = this;
+    'delete': function (original_query, options) {
+        var that = this, query = _.clone(original_query);
         options = options || {};
         return this.collection.findAndModify(_.extend({}, options, {
             query: query,
@@ -165,8 +175,8 @@ var adapter = {
                 return that.afterDelete(query, options);
             });
     },
-    query: function (query, options) {
-        var that = this;
+    query: function (original_query, options) {
+        var that = this, query = _.clone(original_query);
         options = options || {};
         return this.collection.find(query, this.projection)
             .skip(options.skip)
@@ -244,8 +254,8 @@ var adapter = {
                 }
             });
     },
-    count: function (query) {
-        var that = this;
+    count: function (original_query) {
+        var that = this, query = _.clone(original_query);
         return this.collection.count(query)
             .then(function (result) {
                 return that.afterQuery(result, query);
@@ -405,28 +415,32 @@ var adapter = {
         }
 
     },
-    validateUpdate: function (_query, update, _options) {
+    validateUpdate: function (_query, _update, _options) {
         var validations = this.validations,
             adapter = this.adapter,
-            relations = this.relations;
+            relations = this.relations,
+            update = {};
         if (_.isUndefined(validations)) {
-            return [_query, update, _options];
+            return [_query, _update, _options];
         }
         return Promise.resolve([_query, _options]).bind(this)
             .spread(this.adapter.validateQuery)
             .spread(function (query, options) {
                 var valid = true, errors = [];
                 _.forOwn(this.adapter.updateOperators, function (setup, operator) {
-                    if (!_.isUndefined(update[operator]) && !_.isUndefined(validations.update[setup.opClass])) {
+                    if (_.isObject(_update[operator])) {
                         if (setup === false) {
                             errors.push(['operator', operator]);
                             valid = false;
                         }
                         else {
-                            _.forEach(validations.update[setup.opClass], function (validation) {
-                                setup.validateFunc.call(this, update[operator], validation);
-                            }, this);
-                        }
+                            update[operator] = _.clone(_update[operator]);
+                            if(!_.isUndefined(validations.update[setup.opClass])) {                                
+                                _.forEach(validations.update[setup.opClass], function (validation) {
+                                    setup.validateFunc.call(this, update[operator], validation);
+                                }, this);
+                            }                
+                        }        
                     }
                 }, this);
 
@@ -463,9 +477,10 @@ var adapter = {
         if (_.isUndefined(entity)) return true;
         var promises = [];
         _.forEach(this.relations, function (rel) {
-            if (!_.isUndefined(entity[rel.field])) {
-                var query = {}, collection = process.basyt.collections[rel.entity];
-                if (rel.foreign === collection.idField) {
+            if (!_.isUndefined(entity[rel.field])) {                
+                var query = {}, collection = process.basyt.collections[rel.entity], queryKey = rel.foreign || collection.idField, length;
+
+                if (queryKey === collection.idField) {
                     if (_.isArray(entity[rel.field]) && rel.isArray) {
                         entity[rel.field] = _.map(entity[rel.field], collection.idFunction);
                     }
@@ -474,7 +489,17 @@ var adapter = {
                     }
 
                 }
-                query[rel.foreign] = entity[rel.field];
+
+
+                if(_.isArray(entity[rel.field])) {
+                    var uniques = _.uniq(entity[rel.field]);
+                    query[queryKey] = {$in: uniques};    
+                    length = uniques.length;
+                }
+                else {
+                    query[queryKey] = entity[rel.field];
+                    length = 1;
+                }                
 
                 if (insertion && _.isObject(rel.transfer)) {
                     promises.push(MongoDB.collection(rel.entity).findOne(query)
@@ -491,7 +516,7 @@ var adapter = {
                 else {
                     promises.push(MongoDB.collection(rel.entity).count(query)
                         .then(function (count) {
-                            if (count === 0) {
+                            if (count != length) {
                                 throw new process.basyt.ErrorDefinitions.InputError([[rel.field, 'invalid']])
                             }
                             return true;
