@@ -16,7 +16,8 @@ module.exports = {
             	type: "relation",
             	entity: "test_entity",
             	foreign: "email",
-            	role: "byEmail"
+            	role: "byEmail",
+                transfer: {"rel_transfer": "name"}
             },
             test_entity_ids: {
             	type: "array",
@@ -26,6 +27,7 @@ module.exports = {
             primary_ids: {
             	type: "array",
             	entity: "different_primary",
+                element: "string",
             	role: "primaries"
             },
             primary_names: {

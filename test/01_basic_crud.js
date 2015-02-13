@@ -138,14 +138,31 @@ describe('Basic CRUD Operations for Different Primary Key entity', function (){
 			done();
 		});
 	});	
+
+
+	it('Query 1', function(done){
+		differentPrimaryCollection.query()
+		.then(function(list){
+			should(list).have.length(1);
+			done();
+		});
+	});
+
 	it('Delete', function(done){
 		differentPrimaryCollection.delete({code: "12C"})
 		.then(function(doc){
-			entityCollection.read({code: "12C"}).catch(function(doc){			
-				done();
-			});
+			done();
 		});
 	});
+
+	it('Query 2', function(done){
+		differentPrimaryCollection.query()
+		.then(function(list){
+			should(list).have.length(0);
+			done();
+		});
+	});
+
 
 	it('Check entity events', function(done){
 		setTimeout(function(){
@@ -158,6 +175,27 @@ describe('Basic CRUD Operations for Different Primary Key entity', function (){
 		}, 200);
 	});
 });
+
+describe('invalid read update delete', function(){
+	it('Invalid Read', function(done){
+		differentPrimaryCollection.read({code: "FALSE"}).catch(function(err){
+			done();
+		});
+	});
+
+	it('Invalid Update', function(done){
+		differentPrimaryCollection.update({code: "FALSE"}, {$set: {name: "test prime"}})
+		.catch(function(err){
+			done();
+		});
+	});	
+	it('Invalid Delete', function(done){
+		differentPrimaryCollection.delete({code: "FALSE"})
+		.catch(function(err){
+			done();
+		});
+	});
+})
 	
 
 

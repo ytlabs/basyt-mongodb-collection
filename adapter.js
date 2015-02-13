@@ -3,8 +3,8 @@ var Promise = require('bluebird'),
 
 var adapterValidateField = function (update, validation) {
         valid = this.validateField(update, validation);
-        if (valid === false) errors.push([validation.field, validation.name]);
-        return valid;
+        if (valid === false) return [validation.field, validation.name];
+        return;
     },
     adapterValidateArray = function (update, validation) {
         valid = true;
@@ -75,7 +75,7 @@ var adapter = {
                             queryKey = rel.foreign || entity.idField;
 
                         if (rel.isArray) {
-                            query[queryKey] = (queryKey === entity.idField) ? {$in: _.map(result[rel.field], entity.idFunction)} : {$in: result[rel.field]};
+                            query[queryKey] = {$in: result[rel.field]};
                             promises.push(entity.query(query, {depth: options.depth - 1})
                                 .catch(process.basyt.ErrorDefinitions.BasytError, function (err) {
                                     return true; //we may catch the ones with orphan link. but we dont.
@@ -85,7 +85,7 @@ var adapter = {
                                 }));
                         }
                         else {
-                            query[queryKey] = (queryKey === entity.idField) ? entity.idFunction(result[rel.field]) : result[rel.field];
+                            query[queryKey] = result[rel.field];
                             promises.push(entity.read(query, {depth: options.depth - 1})
                                 .catch(process.basyt.ErrorDefinitions.BasytError, function (err) {
                                     return true; //we may catch the ones with orphan link. but we dont.
@@ -123,7 +123,7 @@ var adapter = {
                 new: true
             }))
                 .then(function (result) {
-                    if (result === null) {
+                    if (result[0] === null) {
                         throw new process.basyt.ErrorDefinitions.BasytError({message: 'Not Found'}, 404);
                     }
                     var entity_id;
@@ -217,15 +217,14 @@ var adapter = {
                     _.forEach(that.relations, function (rel) {
                         if (rel.visible === false) return true;
                         var entity = process.basyt.collections[rel.entity], query = {}, queryKey = rel.foreign || entity.idField, ids = _.keys(relIdArray[rel.field]);
-                        query[queryKey] = (queryKey === entity.idField) ? {$in: _.map(ids, entity.idFunction)} : {$in: ids};
-                        //query [rel.foreign || entity.idField] = {$in: _.keys(relIdArray[rel.field])};
+                        query[queryKey] = {$in: ids};
                         promises.push(entity.query(query, {depth: options.depth - 1})
                             .catch(process.basyt.ErrorDefinitions.BasytError, function (err) {
                                 return true; //we may catch the ones with orphan link. but we dont.
                             })
                             .then(function (list) {
                                 _.forEach(list, function (pRes) {
-                                    var key = rel.foreign === entity.idField ? 'id' : rel.foreign;
+                                    var key = queryKey === '_id' ? 'id' : queryKey;
                                     var values = relIdArray[rel.field][pRes[key]];
                                     _.forEach(values, function (index) {
                                         if (!rel.isArray) {
@@ -350,38 +349,6 @@ var adapter = {
             }
         }
         if (valid) {
-            if (query) {
-                //handle relations for query
-                _.forEach(relations, function (rel) {
-                    if (_.isUndefined(query[rel.field]))
-                        return true;
-
-                    var collection = process.basyt.collections[rel.entity];
-                    if (rel.foreign == collection.idField) {
-                        if (_.isObject(query[rel.field])) {
-                            if (!_.isUndefined(query[rel.field].$in)) {
-                                query[rel.field].$in = _.map(query[rel.field].$in, collection.idFunction);
-                            }
-                            if (!_.isUndefined(query[rel.field].$nin)) {
-                                query[rel.field].$nin = _.map(query[rel.field].$nin, collection.idFunction);
-                            }
-                            _.forEach(['$gt', '$gte', '$lt', '$lte', '$ne'], function (op) {
-                                if (!_.isUndefined(query[rel.field][op])) {
-                                    query[rel.field][op] = collection.idFunction(query[rel.field][op]);
-                                }
-                            })
-                        }
-                        else {
-                            if (_.isArray(query[rel.field]) && rel.isArray) {
-                                query[rel.field] = _.map(query[rel.field], collection.idFunction);
-                            }
-                            else {
-                                query[rel.field] = collection.idFunction(query[rel.field]);
-                            }
-                        }
-                    }
-                });
-            }
             return [query, options];
         }
         else {
@@ -432,12 +399,18 @@ var adapter = {
                         if (setup === false) {
                             errors.push(['operator', operator]);
                             valid = false;
+                            return valid;
                         }
                         else {
                             update[operator] = _.clone(_update[operator]);
                             if(!_.isUndefined(validations.update[setup.opClass])) {                                
                                 _.forEach(validations.update[setup.opClass], function (validation) {
-                                    setup.validateFunc.call(this, update[operator], validation);
+                                    var err = setup.validateFunc.call(this, update[operator], validation);
+                                    if(!_.isUndefined(err) && err !== true) {
+                                        errors.push(err);
+                                        valid = false;
+                                        return valid;
+                                    }
                                 }, this);
                             }                
                         }        
@@ -478,26 +451,32 @@ var adapter = {
         var promises = [];
         _.forEach(this.relations, function (rel) {
             if (!_.isUndefined(entity[rel.field])) {                
-                var query = {}, collection = process.basyt.collections[rel.entity], queryKey = rel.foreign || collection.idField, length;
+                var query = {}, 
+                collection = process.basyt.collections[rel.entity], 
+                queryKey = rel.foreign || collection.idField,
+                length;
 
                 if (queryKey === collection.idField) {
                     if (_.isArray(entity[rel.field]) && rel.isArray) {
-                        entity[rel.field] = _.map(entity[rel.field], collection.idFunction);
+                        relationValue = _.map(entity[rel.field], collection.idFunction);
                     }
                     else {
-                        entity[rel.field] = collection.idFunction(entity[rel.field]);
+                        relationValue = collection.idFunction(entity[rel.field]);
                     }
 
                 }
+                else {
+                    relationValue = _.cloneDeep(entity[rel.field]);
+                }
 
 
-                if(_.isArray(entity[rel.field])) {
-                    var uniques = _.uniq(entity[rel.field]);
+                if(_.isArray(relationValue)) {
+                    var uniques = _.uniq(relationValue);
                     query[queryKey] = {$in: uniques};    
                     length = uniques.length;
                 }
                 else {
-                    query[queryKey] = entity[rel.field];
+                    query[queryKey] = relationValue;
                     length = 1;
                 }                
 
