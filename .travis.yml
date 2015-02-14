@@ -5,12 +5,13 @@ node_js: "0.10"
 install:
   - npm install -g mocha
   - npm install -g istanbul
-  - npm install -g coveralls
+  - npm install -g node-coveralls
+  - npm install -g mocha-lcov-reporter
   - npm install
 services:
   - mongodb
   - redis-server
 script:
-  - istanbul cover --report lcovonly _mocha
+  - istanbul cover _mocha --report lcovonly
 after_script:
   - cat ./coverage/lcov.info | coveralls/bin/coveralls.js
