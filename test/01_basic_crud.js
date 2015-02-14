@@ -30,7 +30,9 @@ describe('Initialization', function () {
 		testEntity = require('./entities/01_test_entity');
 		entityCollection = new Collection(testEntity.collection, 'test_entity');
 		process.basyt.collections['test_entity'] = entityCollection;
-		entityCollection.drop().then(function(){
+		entityCollection.drop()
+		.catch(function(){done()})
+		.then(function(){
 			done();
 		});
 	});
