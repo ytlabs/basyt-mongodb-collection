@@ -31,10 +31,8 @@ describe('Initialization', function () {
 		entityCollection = new Collection(testEntity.collection, 'test_entity');
 		process.basyt.collections['test_entity'] = entityCollection;
 		entityCollection.drop()
-		.catch(function(){done()})
-		.then(function(){
-			done();
-		});
+			.catch(function(){ return; })
+			.then(function(){ done(); });
 	});
 });
 

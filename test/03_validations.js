@@ -25,10 +25,8 @@ describe('Create Instances', function () {
 
 	it('clear entity tables', function(done) {
 		validationCollection.drop()
-		.catch(function(){done()})
-		.then(function() {
-			done();
-		});
+		.catch(function(){ return; })
+		.then(function() { done(); });
 	});
 });
 var entity = {};

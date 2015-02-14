@@ -30,11 +30,11 @@ process.basyt.collections['different_primary'] = differentPrimaryCollection;
 describe('Create Instances', function () {
 
 	it('clear entity tables', function(done) {
-		entityCollection.drop().then(function() {
-			differentPrimaryCollection.drop().then(function(){
-				done();
-			});
-		});
+		entityCollection.drop()
+			.catch(function(){ return; })
+			.then(function() { return differentPrimaryCollection.drop(); })
+			.catch(function(){ return; })
+			.then(function(){ done(); });
 
 	});
 
@@ -130,9 +130,9 @@ describe('Create Instances', function () {
 					}
 
 			};
-		relationalCollection.drop().then(function(){
-			done();
-		})
+		relationalCollection.drop()
+			.catch(function(){ return; })
+			.then(function(){ done(); });
 	});
 
 });
