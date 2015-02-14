@@ -92,7 +92,7 @@ describe('Basic CRUD Operations', function (){
 			should(eventActions).containEql("update");
 			should(eventActions).containEql("delete");
 			done();
-		}, 500);
+		}, 200);
 	});
 });
 
@@ -172,7 +172,7 @@ describe('Basic CRUD Operations for Different Primary Key entity', function (){
 			should(eventActions).containEql("update");
 			should(eventActions).containEql("delete");
 			done();
-		}, 500);
+		}, 200);
 	});
 });
 
