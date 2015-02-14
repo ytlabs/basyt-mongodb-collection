@@ -14,4 +14,4 @@ services:
 script:
   - istanbul cover _mocha --report lcovonly
 after_script:
-  - cat ./coverage/lcov.info | coveralls/bin/coveralls.js
+  - cat ./coverage/lcov.info | coveralls
