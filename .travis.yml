@@ -9,6 +9,7 @@ install:
   - npm install
 services:
   - mongodb
+  - redis-server
 script:
   - istanbul cover --report lcovonly mocha
 after_script:
