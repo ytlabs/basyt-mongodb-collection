@@ -1,4 +1,5 @@
 var Promise = require('bluebird'),
+    _ = require('lodash'),
     MongoDB = require("./connector");
 
 var adapterValidateField = function (update, validation) {
@@ -42,7 +43,7 @@ var adapter = {
                     delete result._id;
                 } 
                 _.forEach(that.eventNames, function (name) {
-                    var channelName = _.template(name, result);
+                    var channelName = _.template(name)(result);
                     that.publisher.publish(channelName, JSON.stringify({
                         eventName: 'entity:update:' + that.name,
                         data: {action: 'create', entity_id: entity_id}
@@ -136,7 +137,7 @@ var adapter = {
                         delete result[0]._id;
                     }                    
                     _.forEach(that.eventNames, function (name) {
-                        that.publisher.publish(_.template(name, result[0]), JSON.stringify({
+                        that.publisher.publish(_.template(name)(result[0]), JSON.stringify({
                             eventName: 'entity:update:' + that.name,
                             data: {action: 'update', entity_id: entity_id}
                         }));
@@ -167,7 +168,7 @@ var adapter = {
                     delete result[0]._id;
                 }
                 _.forEach(that.eventNames, function (name) {
-                    that.publisher.publish(_.template(name, result[0]), JSON.stringify({
+                    that.publisher.publish(_.template(name)(result[0]), JSON.stringify({
                         eventName: 'entity:update:' + that.name,
                         data: {action: 'delete', entity_id: entity_id}
                     }));
@@ -263,7 +264,7 @@ var adapter = {
     drop: function () {
         var that = this;
         _.forEach(that.eventNames, function (name) {
-            that.publisher.publish(_.template(name, {}), JSON.stringify({
+            that.publisher.publish(_.template(name)({}), JSON.stringify({
                 eventName: 'entity:update:' + that.name,
                 data: {action: 'drop'}
             }));
@@ -389,6 +390,9 @@ var adapter = {
             update = {};
         if (_.isUndefined(validations)) {
             return [_query, _update, _options];
+        }
+        if (_.isUndefined(_update)) {
+            throw new process.basyt.ErrorDefinitions.BasytError({message: 'Update not defined'}, 400);
         }
         return Promise.resolve([_query, _options]).bind(this)
             .spread(this.adapter.validateQuery)

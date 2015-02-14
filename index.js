@@ -1,5 +1,4 @@
-//GLOBAL lodash
-_ = require('lodash');
+var _ = require('lodash');
 
 var util = require("util"),
     MongoDB = require("./connector"),
