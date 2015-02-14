@@ -11,6 +11,6 @@ services:
   - mongodb
   - redis-server
 script:
-  - istanbul cover --report lcovonly mocha
+  - istanbul cover --report lcovonly _mocha
 after_script:
   - cat ./coverage/lcov.info | coveralls/bin/coveralls.js
