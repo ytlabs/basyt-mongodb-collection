@@ -276,15 +276,6 @@ var adapter = {
         if (_.isUndefined(this.validations)) {
             return [query, options];
         }
-        if (!_.isUndefined(queryOptions)) {
-            _.forOwn(options, function (value, option) {
-                if ((queryOptions[option] === null) || (!_.isUndefined(queryOptions[option]) && options[option] !== queryOptions[option])) {
-                    errors.push(['option', option]);
-                    valid = false;
-                    return false;
-                }
-            });
-        }
         if (valid && _.isObject(query)) {
             if (!_.isUndefined(this.validations.query)) {
                 //TODO handle $and and $or conditions
@@ -295,16 +286,13 @@ var adapter = {
                     if (validation.mutates) {
                         try {
                             if (_.isObject(query[validation.field])) {
-                                if (!_.isUndefined(query[validation.field].$in)) {
-                                    _.forEach(query[validation.field].$in, function (item, index) {
-                                        query[validation.field].$in[index] = validation.func(item, validation.param, query, validation.field);
-                                    });
-                                }
-                                if (!_.isUndefined(query[validation.field].$nin)) {
-                                    _.forEach(query[validation.field].$in, function (item, index) {
-                                        query[validation.field].$in[index] = validation.func(item, validation.param, query, validation.field);
-                                    });
-                                }
+                                _.forEach(['$in', '$nin'], function(op){
+                                    if (!_.isUndefined(query[validation.field][op])) {
+                                        _.forEach(query[validation.field][op], function (item, index) {
+                                            query[validation.field][op][index] = validation.func(item, validation.param, query, validation.field);
+                                        });
+                                    }    
+                                })
                                 _.forEach(['$gt', '$gte', '$lt', '$lte', '$ne'], function (op) {
                                     if (!_.isUndefined(query[validation.field][op])) {
                                         query[validation.field][op] = validation.func(query[validation.field][op], validation.param, query, validation.field);
@@ -321,18 +309,14 @@ var adapter = {
                     }
                     else {
                         if (_.isObject(query[validation.field])) {
-                            if (!_.isUndefined(query[validation.field].$in)) {
-                                _.forEach(query[validation.field].$in, function (val) {
-                                    valid = validation.func(val);
-                                    return valid;
-                                })
-                            }
-                            if (!_.isUndefined(query[validation.field].$nin)) {
-                                _.forEach(query[validation.field].$nin, function (val) {
-                                    valid = validation.func(val);
-                                    return valid;
-                                })
-                            }
+                            _.forEach(['$in', '$nin'], function(op){
+                                if (!_.isUndefined(query[validation.field][op])) {
+                                    _.forEach(query[validation.field][op], function (val) {
+                                        valid = validation.func(val);
+                                        return valid;
+                                    })
+                                }    
+                            });
                             _.forEach(['$gt', '$gte', '$lt', '$lte', '$ne'], function (op) {
                                 if (!_.isUndefined(query[validation.field][op])) {
                                     valid = validation.func(query[validation.field][op]);

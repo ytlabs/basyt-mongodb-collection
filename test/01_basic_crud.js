@@ -163,6 +163,14 @@ describe('Basic CRUD Operations for Different Primary Key entity', function (){
 		});
 	});
 
+	it('Query 3', function(done){
+		differentPrimaryCollection.query({}, {limit: 10})
+		.then(function(list){
+			should(list).have.length(0);
+			done();
+		});
+	});
+
 
 	it('Check entity events', function(done){
 		setTimeout(function(){
