@@ -179,7 +179,7 @@ var adapter = {
     query: function (original_query, options) {
         var that = this, query = _.clone(original_query);
         options = options || {};
-        return this.collection.find(query, this.projection)
+        return this.collection.find(query, options.projection || this.projection)
             .skip(options.skip)
             .limit(options.limit)
             .sort(options.sort)
