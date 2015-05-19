@@ -179,6 +179,11 @@ var adapter = {
     query: function (original_query, options) {
         var that = this, query = _.clone(original_query);
         options = options || {};
+
+        if(_.has(options, 'search_text')) {
+            query.$text = {$search: options.search_text};
+        }
+
         return this.collection.find(query, options.projection || this.projection)
             .skip(options.skip)
             .limit(options.limit)
@@ -272,9 +277,14 @@ var adapter = {
         return this.collection.drop();
     },
     validateQuery: function (query, options) {
-        var errors = [], valid = true, queryOptions = this.queryOptions, relations = this.relations;
+        var errors = [], valid = true;
         if (_.isUndefined(this.validations)) {
             return [query, options];
+        }
+        options = options || {};
+        if(_.has(options, 'search_text') && !this.searchAvailable) {
+            errors.push(['query', 'search_not_available']);
+            valid = false;
         }
         if (valid && _.isObject(query)) {
             if (!_.isUndefined(this.validations.query)) {

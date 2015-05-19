@@ -15,22 +15,20 @@ var should = require('should'),
 	_ = require('lodash'),	
 	Collection = require('../'),
 	validationEntity = require('./entities/03_validation_entity'),
-	validationCollection = new Collection(validationEntity.collection, 'validation_entity'),
-	testEntity = [],
-	invalid_test_entity_id = "54dcb4cc4933211b2dd4aa9d";
+	validationCollection,
+	invalid_test_entity_id = "54dcb4cc4933211b2dd4aa9d", MongoDB = require('../connector');
 
-process.basyt.collections['validation_entity'] = validationCollection;
 
-describe('Create Instances', function () {
 
-	it('clear entity tables', function(done) {
-		validationCollection.drop()
-		.catch(function(){ return; })
-		.then(function() { done(); });
-	});
-});
 var entity = {};
 describe('Validations', function(){
+	it('Clean database', function(done) {
+		MongoDB.dropDatabase().then(function(){
+			validationCollection = new Collection(validationEntity.collection, 'validation_entity');
+			process.basyt.collections['validation_entity'] = validationCollection;		
+			done();
+		})
+	})
 	it('Check strict', function(done){
 		validationCollection.create({
 			required: "value",

@@ -11,33 +11,32 @@ process.basyt = {
 	ErrorDefinitions: require('./utils/ErrorDefinitions')
 };
 
+
 var should = require('should'),
 	redis = require('redis'),
 	_ = require('lodash'),	
 	Collection = require('../'),
 	testEntity = require('./entities/01_test_entity'),
 	differentPrimaryEntity = require('./entities/01_different_primary'),
-	entityCollection = new Collection(testEntity.collection, 'test_entity'),
-	differentPrimaryCollection = new Collection(differentPrimaryEntity.collection, 'different_primary'),
+	entityCollection,
+	differentPrimaryCollection,
 	relationalCollection,
-	testEntity = [],
 	relationalEntities = {},
-	invalid_test_entity_id = "54dcb4cc4933211b2dd4aa9d";
+	testEntities = [],
+	invalid_test_entity_id = "54dcb4cc4933211b2dd4aa9d", MongoDB = require('../connector');
 
-process.basyt.collections['test_entity'] = entityCollection;
-process.basyt.collections['different_primary'] = differentPrimaryCollection;
+
 
 describe('Create Instances', function () {
-
-	it('clear entity tables', function(done) {
-		entityCollection.drop()
-			.catch(function(){ return; })
-			.then(function() { return differentPrimaryCollection.drop(); })
-			.catch(function(){ return; })
-			.then(function(){ done(); });
-
+	it('Clean database', function(done) {
+		MongoDB.dropDatabase().then(function(){
+			entityCollection = new Collection(testEntity.collection, 'test_entity');
+			differentPrimaryCollection = new Collection(differentPrimaryEntity.collection, 'different_primary');
+			process.basyt.collections['test_entity'] = entityCollection;
+			process.basyt.collections['different_primary'] = differentPrimaryCollection;		
+			done();
+		});
 	});
-
 	it('Create test entity instances', function(done) {
 		entityCollection.create({
 			name: "test",
@@ -45,7 +44,7 @@ describe('Create Instances', function () {
 			url: "http://hop.co",
 			telephone: "65243433"
 		}).then(function(doc) {
-			testEntity[0] = doc.id.toString();
+			testEntities[0] = doc.id.toString();
 			return entityCollection.create({
 				name: "test",
 				email: "test@test2.com",
@@ -53,7 +52,7 @@ describe('Create Instances', function () {
 				telephone: "65243433"
 			})			
 		}).then(function(doc2) {
-			testEntity[1] = doc2.id.toString();
+			testEntities[1] = doc2.id.toString();
 			return entityCollection.create({
 				name: "test 3",
 				email: "test@test3.com",
@@ -61,7 +60,7 @@ describe('Create Instances', function () {
 				telephone: "65243433"
 			})			
 		}).then(function(doc3) {
-			testEntity[2] = doc3.id.toString();
+			testEntities[2] = doc3.id.toString();
 			done();
 		});
 	});
@@ -69,11 +68,13 @@ describe('Create Instances', function () {
 	it('Create different primary entity instances', function(done) {
 		differentPrimaryCollection.create({
 			name: "test C12",
-			code: "12C"
+			code: "12C",
+			bodyText: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
 		}).then(function(doc) {
 			return differentPrimaryCollection.create({
 				name: "test B15",
-				code: "15B"
+				code: "15B",
+				bodyText: 'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.'
 			})			
 		}).then(function(doc) {
 			return differentPrimaryCollection.create({
@@ -93,7 +94,7 @@ describe('Create Instances', function () {
 		relationalEntities = {
 				type1: {
 						name: "type1",
-						test_entity_id: testEntity[0]
+						test_entity_id: testEntities[0]
 					},
 				type2: {
 						name: "type2",
@@ -105,7 +106,7 @@ describe('Create Instances', function () {
 					},
 				type4: {
 						name: "type4",
-						test_entity_ids: testEntity.slice(0, 2)
+						test_entity_ids: testEntities.slice(0, 2)
 					},
 				type5: {
 						name: "type5",
@@ -117,13 +118,13 @@ describe('Create Instances', function () {
 					},
 				type7: {
 						name: "type7",
-						test_entity_id: testEntity[0],
-						test_entity_ids: testEntity.slice(0, 2),
+						test_entity_id: testEntities[0],
+						test_entity_ids: testEntities.slice(0, 2),
 						test_entity_email: "test@test2.com"
 					},
 				type8: {
 						name: "type8",
-						test_entity_id: testEntity[0],
+						test_entity_id: testEntities[0],
 						primary_names: ["test C12", "test B15"],
 						test_entity_email: "test@test.com",
 						primary_ids: ["12C", "15B"]
@@ -199,7 +200,7 @@ describe("Create one-to-many relations entities", function() {
 	it('Reject to create entity with invalid relation _id field', function(done){
 		relationalCollection.create({
 			name: "type4",
-			test_entity_ids: [testEntity[1], invalid_test_entity_id]
+			test_entity_ids: [testEntities[1], invalid_test_entity_id]
 		}).catch(function(){
 			done();
 		});
@@ -352,9 +353,9 @@ describe("Update Relational entities", function(){
 	it('Plain update for an relation field on _id', function(done){
 		var entityQuery = {};
 			entityQuery[relationalCollection.idField] = relationalEntities.type1.id;
-		relationalCollection.update(entityQuery, {$set: {test_entity_id: testEntity[2]}})
+		relationalCollection.update(entityQuery, {$set: {test_entity_id: testEntities[2]}})
 			.then(function(doc){
-				should(doc.test_entity_id).be.exactly(testEntity[2]);
+				should(doc.test_entity_id).be.exactly(testEntities[2]);
 				done();
 			});
 	});
@@ -364,7 +365,7 @@ describe("Update Relational entities", function(){
 			entityQuery[relationalCollection.idField] = relationalEntities.type1.id;
 		relationalCollection.update(entityQuery, {$set: {dp_id: "1E"}})
 			.then(function(doc){
-				should(doc.test_entity_id).be.exactly(testEntity[2]);
+				should(doc.test_entity_id).be.exactly(testEntities[2]);
 				done();
 			});
 	});
@@ -372,10 +373,10 @@ describe("Update Relational entities", function(){
 	it('Add to relation list field on _id', function(done){
 		var entityQuery = {};
 			entityQuery[relationalCollection.idField] = relationalEntities.type4.id;
-		relationalCollection.update(entityQuery, {$addToSet: {test_entity_ids: testEntity[2]}})
+		relationalCollection.update(entityQuery, {$addToSet: {test_entity_ids: testEntities[2]}})
 			.then(function(doc){
 				should(doc.test_entity_ids).have.length(3);
-				should(doc.test_entity_ids).containEql(testEntity[2]);
+				should(doc.test_entity_ids).containEql(testEntities[2]);
 				done();
 			});
 	});
@@ -403,9 +404,9 @@ describe("Update Relational entities", function(){
 	});
 
 	it('Multiple updates for single relation field', function(done){
-		relationalCollection.update({test_entity_id: testEntity[0]}, {$push: {primary_ids: "1E"}}, {multi: true})
+		relationalCollection.update({test_entity_id: testEntities[0]}, {$push: {primary_ids: "1E"}}, {multi: true})
 			.then(function(doc){
-				relationalCollection.query({test_entity_id: testEntity[0]}, {depth: 1})
+				relationalCollection.query({test_entity_id: testEntities[0]}, {depth: 1})
 					.then(function(list){
 						should(list).have.length(2);
 						_.forEach(list, function(item){
@@ -418,13 +419,13 @@ describe("Update Relational entities", function(){
 	});
 
 	it('Multiple updates for multiple relation field', function(done){
-		relationalCollection.update({primary_ids: "12C"}, {$push: {test_entity_ids: testEntity[2]}}, {multi: true})
+		relationalCollection.update({primary_ids: "12C"}, {$push: {test_entity_ids: testEntities[2]}}, {multi: true})
 			.then(function(doc){
 				relationalCollection.query({primary_ids: "12C"}, {depth: 1})
 					.then(function(list){
 						should(list).have.length(2);
 						_.forEach(list, function(item){
-							should(item.test_entity_ids).containEql(testEntity[2]);
+							should(item.test_entity_ids).containEql(testEntities[2]);
 							should(item).have.property('entities');
 						})
 						done();
@@ -433,7 +434,7 @@ describe("Update Relational entities", function(){
 	});
 
 	it('Count over pushed relations', function(done){
-		relationalCollection.count({test_entity_ids: testEntity[2]})
+		relationalCollection.count({test_entity_ids: testEntities[2]})
 			.then(function(count){
 				should(count).be.exactly(3);
 				done();

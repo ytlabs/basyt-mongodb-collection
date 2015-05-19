@@ -6,33 +6,40 @@ GLOBAL.APP_CONFIG = {
 };
 
 
+
 process.basyt = {
 	collections : {},
 	ErrorDefinitions: require('./utils/ErrorDefinitions')
 };
 
+
 var should = require('should'),
 	redis = require('redis'),	
 	Collection,
 	testEntity,
+	differentPrimaryEntity,
 	entityCollection,
 	differentPrimaryCollection,
-	entityQuery = {};
+	entityQuery = {}, MongoDB = require('../connector');
 
 describe('Initialization', function () {
-
+	it('Clean database', function(done) {
+		MongoDB.dropDatabase().then(function(){
+			done();
+		}).catch(function(err){
+			console.log(err);
+			done();
+		})
+	});
 	it('Instantiate mongodb collection factory', function(done) {
 		Collection = require('../');
 		done();
 	});
-
 	it('Create test collection', function(done) {
 		testEntity = require('./entities/01_test_entity');
 		entityCollection = new Collection(testEntity.collection, 'test_entity');
 		process.basyt.collections['test_entity'] = entityCollection;
-		entityCollection.drop()
-			.catch(function(){ return; })
-			.then(function(){ done(); });
+		done();
 	});
 });
 
@@ -74,7 +81,17 @@ describe('Basic CRUD Operations', function (){
 			should(doc.id.toString()).be.exactly(entityQuery[entityCollection.idField].toString());
 			done();
 		});
-	});	
+	});
+
+	it('Search should be rejected', function(done){
+		entityCollection.query({}, {search_text : 'dolor sit amet'})
+			.catch(function(err){
+				console.log(err);
+				should(err.err).containEql(["query", "search_not_available"]);
+				done();
+			})
+	});
+
 	it('Delete', function(done){
 		entityCollection.delete(entityQuery)
 		.then(function(doc){
@@ -86,8 +103,7 @@ describe('Basic CRUD Operations', function (){
 
 	it('Check entity events', function(done){
 		setTimeout(function(){
-			should(eventActions).have.length(4);
-			should(eventActions).containEql("drop");
+			should(eventActions).have.length(3);
 			should(eventActions).containEql("create");
 			should(eventActions).containEql("update");
 			should(eventActions).containEql("delete");
@@ -101,9 +117,7 @@ describe('Basic CRUD Operations for Different Primary Key entity', function (){
 		differentPrimaryEntity = require('./entities/01_different_primary');
 		differentPrimaryCollection = new Collection(differentPrimaryEntity.collection, 'different_primary');	
 		process.basyt.collections['different_primary'] = differentPrimaryCollection;
-		differentPrimaryCollection.drop().then(function(){
-			done();
-		});
+		done();
 	});
 
 	var redisClient = redis.createClient(), eventActions = [];
@@ -116,9 +130,11 @@ describe('Basic CRUD Operations for Different Primary Key entity', function (){
 	it('Create', function(done) {
 		differentPrimaryCollection.create({
 			name: "test",
-			code: "12C"
+			code: "12C",
+			bodyText: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
 		}).then(function(doc){
 			should(doc.code).be.exactly("12C");
+			should(doc).have.property("bodyText");
 			done();
 		});
 	});
@@ -148,6 +164,14 @@ describe('Basic CRUD Operations for Different Primary Key entity', function (){
 		});
 	});
 
+	it('Search', function(done){
+		differentPrimaryCollection.query({}, {search_text : 'dolor sit amet'})
+		.then(function(list){
+			should(list).have.length(1);
+			done();
+		});
+	});
+
 	it('Delete', function(done){
 		differentPrimaryCollection.delete({code: "12C"})
 		.then(function(doc){
@@ -155,15 +179,15 @@ describe('Basic CRUD Operations for Different Primary Key entity', function (){
 		});
 	});
 
-	it('Query 2', function(done){
-		differentPrimaryCollection.query()
-		.then(function(list){
-			should(list).have.length(0);
+	it('Count', function(done){
+		differentPrimaryCollection.count()
+		.then(function(result){
+			should(result).be.exactly(0);
 			done();
 		});
 	});
 
-	it('Query 3', function(done){
+	it('Query 2', function(done){
 		differentPrimaryCollection.query({}, {limit: 10})
 		.then(function(list){
 			should(list).have.length(0);
@@ -171,6 +195,11 @@ describe('Basic CRUD Operations for Different Primary Key entity', function (){
 		});
 	});
 
+	it('Drop collection to see drop event', function(done){
+		differentPrimaryCollection.drop().then(function(){
+			done();
+		});
+	});
 
 	it('Check entity events', function(done){
 		setTimeout(function(){

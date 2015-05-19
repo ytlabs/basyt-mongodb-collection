@@ -29,10 +29,10 @@ function MongoDBCollection(config, fileName) {
             var dumpSet = {};
             dumpSet[field] = properties.index === -1 ? -1 : 1;
             if (!_.isUndefined(properties.indexProps)) {
-                MongoDB.collection(config.name).ensureIndex(dumpSet, properties.indexProps);
+                MongoDB.collection(config.name).createIndex(dumpSet, properties.indexProps);
             }
             else {
-                MongoDB.collection(config.name).ensureIndex(dumpSet);
+                MongoDB.collection(config.name).createIndex(dumpSet);
             }
             if (properties.primary === true) {
                 if (idField !== storageDefaultIdField) {
@@ -67,6 +67,7 @@ function MongoDBCollection(config, fileName) {
     this.storageDefaultIdField = storageDefaultIdField;
     this.idField = idField;
     this.idFunction = idFunction;
+    this.searchAvailable = textFields.length > 0;
     BasytBaseCollection.call(this, config);
     _.forOwn(config.methods, function (collectionMethods, name) {
         this[name] = collectionMethods;
