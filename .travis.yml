@@ -11,6 +11,8 @@ install:
 services:
   - mongodb
   - redis-server
+before_install:
+  - "mongo --eval 'db.runCommand({setParameter: 1, textSearchEnabled: true})' admin"
 script:
   - istanbul cover _mocha --report lcovonly
 after_script:
