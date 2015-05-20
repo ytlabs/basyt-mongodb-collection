@@ -259,8 +259,11 @@ var adapter = {
                 }
             });
     },
-    count: function (original_query) {
+    count: function (original_query, options) {
         var that = this, query = _.clone(original_query);
+        if(_.has(options, 'search_text')) {
+            query.$text = {$search: options.search_text};
+        }
         return this.collection.count(query)
             .then(function (result) {
                 return that.afterQuery(result, query);

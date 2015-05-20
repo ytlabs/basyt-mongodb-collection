@@ -172,6 +172,14 @@ describe('Basic CRUD Operations for Different Primary Key entity', function (){
 		});
 	});
 
+	it('Count with search', function(done){
+		differentPrimaryCollection.count({}, {search_text : 'dolor sit amet'})
+		.then(function(result){
+			should(result).be.exactly(1);
+			done();
+		});
+	});
+
 	it('Delete', function(done){
 		differentPrimaryCollection.delete({code: "12C"})
 		.then(function(doc){
