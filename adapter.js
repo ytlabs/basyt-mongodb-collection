@@ -113,6 +113,12 @@ var adapter = {
         if (options.multi === true) {
             return this.collection.update(query, update, options)
                 .then(function (result) {
+                    _.forEach(that.eventNames, function (name) {
+                        that.publisher.publish(_.template(name)({}), JSON.stringify({
+                            eventName: 'entity:update:' + that.name,
+                            data: {action: 'update'}
+                        }));
+                    });
                     return that.afterSave(null, update, query, options);
                 });
         }
@@ -149,32 +155,46 @@ var adapter = {
     'delete': function (original_query, options) {
         var that = this, query = _.clone(original_query);
         options = options || {};
-        return this.collection.findAndModify(_.extend({}, options, {
-            query: query,
-            remove: true,
-            fields: this.projection
-        }))
-            .then(function (result) {
-                if (result[0] === null) {
-                    throw new process.basyt.ErrorDefinitions.BasytError({message: 'Not Found'}, 404);
-                }
-                var entity_id;
-                if (that.idField === '_id') {
-                    entity_id = result[0]._id;
-                    that.adapter.fixIdField(result[0]);
-                }
-                else {
-                    entity_id = result[0][that.idField];
-                    delete result[0]._id;
-                }
-                _.forEach(that.eventNames, function (name) {
-                    that.publisher.publish(_.template(name)(result[0]), JSON.stringify({
-                        eventName: 'entity:update:' + that.name,
-                        data: {action: 'delete', entity_id: entity_id}
-                    }));
+        if (options.multi === true) {
+            return this.collection.remove(query, options)
+                .then(function (result) {
+                    _.forEach(that.eventNames, function (name) {
+                        that.publisher.publish(_.template(name)({}), JSON.stringify({
+                            eventName: 'entity:update:' + that.name,
+                            data: {action: 'delete'}
+                        }));
+                    });
+                    return that.afterDelete(query, options);
                 });
-                return that.afterDelete(query, options);
-            });
+        }
+        else {
+            return this.collection.findAndModify(_.extend({}, options, {
+                query: query,
+                remove: true,
+                fields: this.projection
+            }))
+                .then(function (result) {
+                    if (result[0] === null) {
+                        throw new process.basyt.ErrorDefinitions.BasytError({message: 'Not Found'}, 404);
+                    }
+                    var entity_id;
+                    if (that.idField === '_id') {
+                        entity_id = result[0]._id;
+                        that.adapter.fixIdField(result[0]);
+                    }
+                    else {
+                        entity_id = result[0][that.idField];
+                        delete result[0]._id;
+                    }
+                    _.forEach(that.eventNames, function (name) {
+                        that.publisher.publish(_.template(name)(result[0]), JSON.stringify({
+                            eventName: 'entity:update:' + that.name,
+                            data: {action: 'delete', entity_id: entity_id}
+                        }));
+                    });
+                    return that.afterDelete(query, options);
+                });
+        }
     },
     query: function (original_query, options) {
         var that = this, query = _.clone(original_query);

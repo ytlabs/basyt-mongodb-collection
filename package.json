@@ -1,6 +1,6 @@
 {
   "name": "basyt-mongodb-collection",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "basyt mongodb database connection package. See basyt for detailed information.",
   "keywords": [
     "basyt connection",

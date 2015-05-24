@@ -440,4 +440,15 @@ describe("Update Relational entities", function(){
 				done();
 			});
 	})
+
+	it('Delete multiple entities', function(done){
+		relationalCollection.delete({test_entity_ids: testEntities[2]}, {multi: true})
+			.then(function(){
+				relationalCollection.count({})
+					.then(function(count){
+						should(count).be.exactly(5);
+						done();
+					});
+			});
+	})
 });
