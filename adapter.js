@@ -75,27 +75,41 @@ var adapter = {
                         var entity = process.basyt.collections[rel.entity], query = {},
                             queryKey = rel.foreign || entity.idField;
 
-                        if (rel.isArray) {
-                            query[queryKey] = {$in: result[rel.field]};
-                            promises.push(entity.query(query, {depth: options.depth - 1})
-                                .catch(process.basyt.ErrorDefinitions.BasytError, function (err) {
-                                    return true; //we may catch the ones with orphan link. but we dont.
-                                })
-                                .then(function (pRes) {
-                                    result[rel.role] = pRes;
-                                }));
+                        if(rel.direction === 'TO') {
+                                query[rel.foreign] = result[rel.field].toString();
+                                promises.push(entity.query(query, {depth: options.depth - 1})
+                                    .catch(process.basyt.ErrorDefinitions.BasytError, function (err) {
+                                        return true; //we may catch the ones with orphan link. but we dont.
+                                    })
+                                    .then(function (pRes) {
+                                        if(rel.isArray)
+                                            result[rel.role] = pRes;
+                                        else
+                                            result[rel.role] = pRes.length === 1 ? pRes[0] : null;
+                                    }));
                         }
                         else {
-                            query[queryKey] = result[rel.field];
-                            promises.push(entity.read(query, {depth: options.depth - 1})
-                                .catch(process.basyt.ErrorDefinitions.BasytError, function (err) {
-                                    return true; //we may catch the ones with orphan link. but we dont.
-                                })
-                                .then(function (pRes) {
-                                    result[rel.role] = pRes;
-                                }));
+                            if (rel.isArray) {
+                                query[queryKey] = {$in: result[rel.field]};
+                                promises.push(entity.query(query, {depth: options.depth - 1})
+                                    .catch(process.basyt.ErrorDefinitions.BasytError, function (err) {
+                                        return true; //we may catch the ones with orphan link. but we dont.
+                                    })
+                                    .then(function (pRes) {
+                                        result[rel.role] = pRes;
+                                    }));
+                            }
+                            else {
+                                query[queryKey] = result[rel.field];
+                                promises.push(entity.read(query, {depth: options.depth - 1})
+                                    .catch(process.basyt.ErrorDefinitions.BasytError, function (err) {
+                                        return true; //we may catch the ones with orphan link. but we dont.
+                                    })
+                                    .then(function (pRes) {
+                                        result[rel.role] = pRes;
+                                    }));
+                            }
                         }
-
                     });
                     return Promise.all(promises).then(function () {
                         return that.afterRead(result, query, options);
@@ -218,23 +232,28 @@ var adapter = {
                         if (rel.visible === false) return true;
                         relIdArray[rel.field] = {};
                         _.forEach(result, function (item, index) {
-                            if (!_.isUndefined(item[rel.field])) {
-                                if (rel.isArray) {
-                                    _.forEach(item[rel.field], function (elem) {
-                                        if (_.isUndefined(relIdArray[rel.field][elem])) {
-                                            relIdArray[rel.field][elem] = [index];
-                                        }
-                                        else {
-                                            relIdArray[rel.field][elem].push(index);
-                                        }
-                                    });
-                                }
-                                else {
-                                    if (_.isUndefined(relIdArray[rel.field][item[rel.field]])) {
-                                        relIdArray[rel.field][item[rel.field]] = [index];
+                            if(rel.direction === 'TO') {
+                                relIdArray[rel.field][item[rel.field]] = index;
+                            }
+                            else {
+                                if (!_.isUndefined(item[rel.field])) {
+                                    if (rel.isArray) {
+                                        _.forEach(item[rel.field], function (elem) {
+                                            if (_.isUndefined(relIdArray[rel.field][elem])) {
+                                                relIdArray[rel.field][elem] = [index];
+                                            }
+                                            else {
+                                                relIdArray[rel.field][elem].push(index);
+                                            }
+                                        });
                                     }
                                     else {
-                                        relIdArray[rel.field][item[rel.field]].push(index);
+                                        if (_.isUndefined(relIdArray[rel.field][item[rel.field]])) {
+                                            relIdArray[rel.field][item[rel.field]] = [index];
+                                        }
+                                        else {
+                                            relIdArray[rel.field][item[rel.field]].push(index);
+                                        }
                                     }
                                 }
                             }
@@ -249,24 +268,46 @@ var adapter = {
                                 return true; //we may catch the ones with orphan link. but we dont.
                             })
                             .then(function (list) {
-                                _.forEach(list, function (pRes) {
-                                    var key = queryKey === '_id' ? 'id' : queryKey;
-                                    var values = relIdArray[rel.field][pRes[key]];
-                                    _.forEach(values, function (index) {
-                                        if (!rel.isArray) {
-                                            result[index][rel.role] = pRes;
-                                        }
-                                        else {
-                                            if (_.isUndefined(result[index][rel.role])) {
-                                                result[index][rel.role] = [pRes];
-                                            }
-                                            else {
+                                if(rel.direction === 'TO') {
+                                    _.forEach(list, function (pRes) {
+                                        var key = queryKey === '_id' ? 'id' : queryKey, indexes = pRes[key];
+                                        if(!_.isArray(pRes[key])) indexes = [pRes[key]];
+                                        _.forEach(indexes, function(i){
+                                            var index = relIdArray[rel.field][i];
+                                            if(rel.isArray) {
+                                                if (_.isUndefined(result[index][rel.role])) result[index][rel.role] = [];
                                                 result[index][rel.role].push(pRes);
                                             }
-                                        }
+                                            else {
+                                                if (!_.isUndefined(result[index][rel.role]))
+                                                    result[index][rel.role] = null;
+                                                else
+                                                    result[index][rel.role] = pRes;
+                                            }
+                                        });
 
                                     });
-                                });
+                                }
+                                else {
+                                    _.forEach(list, function (pRes) {
+                                        var key = queryKey === '_id' ? 'id' : queryKey;
+                                        var values = relIdArray[rel.field][pRes[key]];
+                                        _.forEach(values, function (index) {
+                                            if (!rel.isArray) {
+                                                result[index][rel.role] = pRes;
+                                            }
+                                            else {
+                                                if (_.isUndefined(result[index][rel.role])) {
+                                                    result[index][rel.role] = [pRes];
+                                                }
+                                                else {
+                                                    result[index][rel.role].push(pRes);
+                                                }
+                                            }
+
+                                        });
+                                    });
+                                }
                                 return true;
                             }));
                     });

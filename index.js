@@ -28,12 +28,8 @@ function MongoDBCollection(config, fileName) {
 
             var dumpSet = {};
             dumpSet[field] = properties.index === -1 ? -1 : 1;
-            if (!_.isUndefined(properties.indexProps)) {
-                MongoDB.collection(config.name).createIndex(dumpSet, properties.indexProps);
-            }
-            else {
-                MongoDB.collection(config.name).createIndex(dumpSet);
-            }
+            MongoDB.collection(config.name).createIndex(dumpSet, properties.indexProps);
+
             if (properties.primary === true) {
                 if (idField !== storageDefaultIdField) {
                     console.log(config.name + ' multiple primary key ' + field + ' ignored');

@@ -15,6 +15,7 @@ process.basyt = {
 var should = require('should'),
 	redis = require('redis'),
 	_ = require('lodash'),	
+	Promise = require('bluebird'),
 	Collection = require('../'),
 	testEntity = require('./entities/01_test_entity'),
 	differentPrimaryEntity = require('./entities/01_different_primary'),
@@ -452,3 +453,88 @@ describe("Update Relational entities", function(){
 			});
 	})
 });
+
+describe('Test reading incoming relations', function(){
+	var anotherEntityCollection, anotherRelEntityCollection, anotherArrayRelEntityCollection,
+		anotherEntity = require('./entities/02_another_entity'),
+		anotherRelEntity = require('./entities/02_another_rel_entity'),
+		anotherArrayRelEntity = require('./entities/02_another_array_rel_entity');
+
+	it('Initialize collections', function(done){
+		anotherEntityCollection = new Collection(anotherEntity.collection, 'another_entity');
+		anotherRelEntityCollection = new Collection(anotherRelEntity.collection, 'another_rel_entity');
+		anotherArrayRelEntityCollection = new Collection(anotherArrayRelEntity.collection, 'another_array_rel_entity');
+		process.basyt.collections['another_entity'] = anotherEntityCollection;
+		process.basyt.collections['another_rel_entity'] = anotherRelEntityCollection;
+		process.basyt.collections['another_array_rel_entity'] = anotherArrayRelEntityCollection;
+		done();
+	});
+	it('Create another_entity', function(done){
+		Promise.all([
+			anotherEntityCollection.create({ name: "ae-1" }),
+			anotherEntityCollection.create({ name: "ae-2" })
+		]).then(function(results) {
+			testEntities[0] = results[0].id.toString();
+			testEntities[1] = results[1].id.toString();
+			done();
+		});
+	});
+
+	it('Create another_rel_entity', function(done){
+		Promise.all([
+			anotherRelEntityCollection.create({ name: "are-1", relation_id: testEntities[0] }),
+			anotherRelEntityCollection.create({ name: "are-2", relation_id: testEntities[1] }),
+			anotherRelEntityCollection.create({ name: "are-3", relation_id: testEntities[1] })
+			])
+		.then(function(doc) {
+			done();
+		});
+	});
+
+	it('Create another_array_rel_entity', function(done){
+		Promise.all([
+			anotherArrayRelEntityCollection.create({ name: "aare-1", relation_ids: [testEntities[0],testEntities[1]] }),
+			anotherArrayRelEntityCollection.create({ name: "aare-2", relation_ids: [testEntities[1]] }),
+			anotherArrayRelEntityCollection.create({ name: "aare-3" })
+			])
+		.then(function(doc) {
+			done();
+		})
+		.catch(function(err){
+			console.log(err);
+			done();
+		});
+	});
+
+	it('Deep read first another_entity, expect relations name to be are-1, relation_list to have 1 entity', function(done){
+		var entityQuery = {}; entityQuery[relationalCollection.idField] = testEntities[0];
+		anotherEntityCollection.read(entityQuery, {depth: 1}).then(function(doc){
+			should(doc.relations.name).be.exactly('are-1');
+			should(doc.relation_list).have.length(1);
+			done();
+		});
+	});
+
+	it('Deep read second another_entity, expect relations name to be null, relation_list to have 2 entities', function(done){
+		var entityQuery = {}; entityQuery[relationalCollection.idField] = testEntities[1];
+		anotherEntityCollection.read(entityQuery, {depth: 1}).then(function(doc){
+			should(doc.relations).be.exactly(null);
+			should(doc.relation_list).have.length(2);
+			done();
+		});
+	});
+
+	it('Deep query another_entity, expect the same results', function(done){
+		anotherEntityCollection.query({}, {depth: 1}).then(function(results){
+            _.forEach(results, function(res){
+                if(res.name == 'ae-1')
+                    should(res.relations.name).be.exactly('are-1');
+                else {
+                    should(res.relations).be.exactly(null);
+                    should(res.relation_list).have.length(2);
+                }
+            });
+			done();
+		});
+	});	
+})
