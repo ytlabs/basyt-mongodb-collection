@@ -511,7 +511,9 @@ var adapter = {
     verifyRelations: function (entity, insertion) {
         if (_.isUndefined(entity)) return true;
         var promises = [];
-        _.forEach(this.relations, function (rel) {
+        _.forEach(this.relations, function (rel) {            
+            if(rel.direction === 'TO')
+                    return true;
             if (!_.isUndefined(entity[rel.field])) {                
                 var query = {}, 
                 collection = process.basyt.collections[rel.entity], 
