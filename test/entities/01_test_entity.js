@@ -9,7 +9,8 @@ module.exports = {
                 type: "numeric",
                 minLength: 7,
                 maxLength: 11
-            }
+            },
+            hidden: {type: "string", readable: false}
         }
     }
 }

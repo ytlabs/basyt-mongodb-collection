@@ -61,6 +61,7 @@ function MongoDBCollection(config, fileName) {
     };
 
     this.storageDefaultIdField = storageDefaultIdField;
+    
     this.idField = idField;
     this.idFunction = idFunction;
     this.searchAvailable = textFields.length > 0;

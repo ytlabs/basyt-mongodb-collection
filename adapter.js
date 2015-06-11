@@ -34,6 +34,7 @@ var adapter = {
         return this.collection.insert(entity)
             .then(function (result) {
                 var entity_id;
+
                 if (that.idField === '_id') {
                     entity_id = result._id;
                     that.adapter.fixIdField(result);
@@ -41,7 +42,10 @@ var adapter = {
                 else {
                     entity_id = result[that.idField];
                     delete result._id;
-                } 
+                }
+
+                result = _.pick(result, that.visible_fields);
+
                 _.forEach(that.eventNames, function (name) {
                     var channelName = _.template(name)(result);
                     that.publisher.publish(channelName, JSON.stringify({
@@ -56,7 +60,7 @@ var adapter = {
         var that = this, query = _.clone(original_query);
         options = options || {depth: 0};
 
-        return this.collection.findOne(query, options.projection || this.projection)
+        return this.collection.findOne(query, options.projection ? _.pick(options.projection, this.visible_fields) : this.projection)
             .then(function (result) {
                 if (result === null) {
                     throw new process.basyt.ErrorDefinitions.BasytError({message: 'Not Found'}, 404);
@@ -140,7 +144,7 @@ var adapter = {
             return this.collection.findAndModify(_.extend({}, options, {
                 query: query,
                 update: update,
-                fields: this.projection,
+                fields: options.projection ? _.pick(options.projection, this.visible_fields) : this.projection,
                 new: true
             }))
                 .then(function (result) {
@@ -185,7 +189,7 @@ var adapter = {
             return this.collection.findAndModify(_.extend({}, options, {
                 query: query,
                 remove: true,
-                fields: this.projection
+                fields: options.projection ? _.pick(options.projection, this.visible_fields) : this.projection
             }))
                 .then(function (result) {
                     if (result[0] === null) {
@@ -218,7 +222,7 @@ var adapter = {
             query.$text = {$search: options.search_text};
         }
 
-        return this.collection.find(query, options.projection || this.projection)
+        return this.collection.find(query, options.projection ? _.pick(options.projection, this.visible_fields) : this.projection)
             .skip(options.skip)
             .limit(options.limit)
             .sort(options.sort)

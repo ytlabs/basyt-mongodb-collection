@@ -57,10 +57,11 @@ describe('Basic CRUD Operations', function (){
 			name: "test",
 			email: "test@test.com",
 			url: "http://hop.co",
-			telephone: "65243433"
+			telephone: "65243433",
+			hidden: "this is hidden"
 		}).then(function(doc){
 			should(doc.email).be.exactly("test@test.com");
-			should(doc).have.property("id");			
+			should(doc).have.property("id");
 			entityQuery[entityCollection.idField] = doc.id;
 
 			done();
@@ -68,7 +69,9 @@ describe('Basic CRUD Operations', function (){
 	});
 
 	it('Read', function(done){
-		entityCollection.read(entityQuery).then(function(doc){
+		entityCollection.read(entityQuery, {projection: {name: 1, email: 1, hidden: 1}}).then(function(doc){
+			should(doc).not.have.property("hidden"); //even projection requests hidden field, it should not be read
+			should(doc).not.have.property("url");
 			done();
 		});
 	});
@@ -147,19 +150,21 @@ describe('Basic CRUD Operations for Different Primary Key entity', function (){
 	});
 
 	it('Update', function(done){
-		differentPrimaryCollection.update({code: "12C"}, {$set: {name: "test prime"}})
+		differentPrimaryCollection.update({code: "12C"}, {$set: {name: "test prime"}}, {projection: {name: 1, code: 1}})
 		.then(function(doc){
 			should(doc.name).be.exactly("test prime");
 			should(doc.code).be.exactly("12C");
+			should(doc).not.have.property("bodyText");
 			done();
 		});
 	});	
 
 
 	it('Query 1', function(done){
-		differentPrimaryCollection.query()
+		differentPrimaryCollection.query({}, {projection: {name: 1}})
 		.then(function(list){
 			should(list).have.length(1);
+			should(list[0]).not.have.property("bodyText");
 			done();
 		});
 	});
