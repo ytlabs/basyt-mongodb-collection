@@ -1,6 +1,6 @@
 {
   "name": "basyt-mongodb-collection",
-  "version": "0.2.12",
+  "version": "0.2.13",
   "description": "basyt mongodb database connection package. See basyt for detailed information.",
   "keywords": [
     "basyt connection",
@@ -23,7 +23,7 @@
   "dependencies": {
     "bluebird": "^2.9.9",
     "lodash": "^3.2.0",
-    "promised-mongo": "^0.11.1",
+    "promised-mongo": "^0.11.0",
     "basyt-base-collection": "^0.2.3"
   },
   "devDependencies": {

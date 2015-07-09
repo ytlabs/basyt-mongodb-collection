@@ -57,10 +57,13 @@ var adapter = {
             });
     },
     read: function (original_query, options) {
-        var that = this, query = _.clone(original_query);
+        var that = this, query = _.clone(original_query), projection = this.projection;
         options = options || {depth: 0};
 
-        return this.collection.findOne(query, options.projection ? _.pick(options.projection, this.visible_fields) : this.projection)
+        if(options.projection)
+            projection = options.unsafe ? options.projection : _.pick(options.projection, this.visible_fields);
+
+        return this.collection.findOne(query, projection)
             .then(function (result) {
                 if (result === null) {
                     throw new process.basyt.ErrorDefinitions.BasytError({message: 'Not Found'}, 404);
@@ -141,10 +144,14 @@ var adapter = {
                 });
         }
         else {
+            var projection = this.projection;
+            if(options.projection)
+                projection = options.unsafe ? options.projection : _.pick(options.projection, this.visible_fields);
+
             return this.collection.findAndModify(_.extend({}, options, {
                 query: query,
                 update: update,
-                fields: options.projection ? _.pick(options.projection, this.visible_fields) : this.projection,
+                fields: projection,
                 new: true
             }))
                 .then(function (result) {
@@ -186,10 +193,13 @@ var adapter = {
                 });
         }
         else {
+            var projection = this.projection;
+            if(options.projection)
+                projection = options.unsafe ? options.projection : _.pick(options.projection, this.visible_fields);
             return this.collection.findAndModify(_.extend({}, options, {
                 query: query,
                 remove: true,
-                fields: options.projection ? _.pick(options.projection, this.visible_fields) : this.projection
+                fields: projection
             }))
                 .then(function (result) {
                     if (result[0] === null) {
@@ -222,7 +232,11 @@ var adapter = {
             query.$text = {$search: options.search_text};
         }
 
-        return this.collection.find(query, options.projection ? _.pick(options.projection, this.visible_fields) : this.projection)
+        var projection = this.projection;
+        if(options.projection)
+            projection = options.unsafe ? options.projection : _.pick(options.projection, this.visible_fields);
+
+        return this.collection.find(query, projection)
             .skip(options.skip)
             .limit(options.limit)
             .sort(options.sort)
