@@ -46,7 +46,7 @@ var adapter = {
 
                 result = _.pick(result, that.visible_fields);
 
-                _.forEach(that.eventNames, function (name) {
+                _.forEach(that.event_channels, function (name) {
                     var channelName = _.template(name)(result);
                     that.publisher.publish(channelName, JSON.stringify({
                         eventName: 'entity:update:' + that.name,
@@ -134,7 +134,7 @@ var adapter = {
         if (options.multi === true) {
             return this.collection.update(query, update, options)
                 .then(function (result) {
-                    _.forEach(that.eventNames, function (name) {
+                    _.forEach(that.event_channels, function (name) {
                         that.publisher.publish(_.template(name)({}), JSON.stringify({
                             eventName: 'entity:update:' + that.name,
                             data: {action: 'update'}
@@ -155,25 +155,25 @@ var adapter = {
                 new: true
             }))
                 .then(function (result) {
-                    if (result[0] === null) {
+                    if (result.value === null) {
                         throw new process.basyt.ErrorDefinitions.BasytError({message: 'Not Found'}, 404);
                     }
                     var entity_id;
                     if (that.idField === '_id') {
-                        entity_id = result[0]._id;
-                        that.adapter.fixIdField(result[0]);
+                        entity_id = result.value._id;
+                        that.adapter.fixIdField(result.value);
                     }
                     else {
-                        entity_id = result[0][that.idField];
-                        delete result[0]._id;
-                    }                    
-                    _.forEach(that.eventNames, function (name) {
-                        that.publisher.publish(_.template(name)(result[0]), JSON.stringify({
+                        entity_id = result.value[that.idField];
+                        delete result.value._id;
+                    }
+                    _.forEach(that.event_channels, function (name) {
+                        that.publisher.publish(_.template(name)(result.value), JSON.stringify({
                             eventName: 'entity:update:' + that.name,
                             data: {action: 'update', entity_id: entity_id}
                         }));
                     });
-                    return that.afterSave(result[0], update, query, options);
+                    return that.afterSave(result.value, update, query, options);
                 });
         }
     },
@@ -181,9 +181,9 @@ var adapter = {
         var that = this, query = _.clone(original_query);
         options = options || {};
         if (options.multi === true) {
-            return this.collection.remove(query, options)
+            return this.collection.remove(query, false)
                 .then(function (result) {
-                    _.forEach(that.eventNames, function (name) {
+                    _.forEach(that.event_channels, function (name) {
                         that.publisher.publish(_.template(name)({}), JSON.stringify({
                             eventName: 'entity:update:' + that.name,
                             data: {action: 'delete'}
@@ -202,20 +202,20 @@ var adapter = {
                 fields: projection
             }))
                 .then(function (result) {
-                    if (result[0] === null) {
+                    if (result.value === null) {
                         throw new process.basyt.ErrorDefinitions.BasytError({message: 'Not Found'}, 404);
                     }
                     var entity_id;
                     if (that.idField === '_id') {
-                        entity_id = result[0]._id;
-                        that.adapter.fixIdField(result[0]);
+                        entity_id = result.value._id;
+                        that.adapter.fixIdField(result.value);
                     }
                     else {
-                        entity_id = result[0][that.idField];
-                        delete result[0]._id;
+                        entity_id = result.value[that.idField];
+                        delete result.value._id;
                     }
-                    _.forEach(that.eventNames, function (name) {
-                        that.publisher.publish(_.template(name)(result[0]), JSON.stringify({
+                    _.forEach(that.event_channels, function (name) {
+                        that.publisher.publish(_.template(name)(result.value), JSON.stringify({
                             eventName: 'entity:update:' + that.name,
                             data: {action: 'delete', entity_id: entity_id}
                         }));
@@ -350,7 +350,7 @@ var adapter = {
     },
     drop: function () {
         var that = this;
-        _.forEach(that.eventNames, function (name) {
+        _.forEach(that.event_channels, function (name) {
             that.publisher.publish(_.template(name)({}), JSON.stringify({
                 eventName: 'entity:update:' + that.name,
                 data: {action: 'drop'}
@@ -383,7 +383,7 @@ var adapter = {
                                         _.forEach(query[validation.field][op], function (item, index) {
                                             query[validation.field][op][index] = validation.func(item, validation.param, query, validation.field);
                                         });
-                                    }    
+                                    }
                                 })
                                 _.forEach(['$gt', '$gte', '$lt', '$lte', '$ne'], function (op) {
                                     if (!_.isUndefined(query[validation.field][op])) {
@@ -407,7 +407,7 @@ var adapter = {
                                         valid = validation.func(val);
                                         return valid;
                                     })
-                                }    
+                                }
                             });
                             _.forEach(['$gt', '$gte', '$lt', '$lte', '$ne'], function (op) {
                                 if (!_.isUndefined(query[validation.field][op])) {
@@ -483,7 +483,7 @@ var adapter = {
                         }
                         else {
                             update[operator] = _.clone(_update[operator]);
-                            if(!_.isUndefined(validations.update[setup.opClass])) {                                
+                            if(!_.isUndefined(validations.update[setup.opClass])) {
                                 _.forEach(validations.update[setup.opClass], function (validation) {
                                     var err = setup.validateFunc.call(this, update[operator], validation);
                                     if(!_.isUndefined(err) && err !== true) {
@@ -492,8 +492,8 @@ var adapter = {
                                         return valid;
                                     }
                                 }, this);
-                            }                
-                        }        
+                            }
+                        }
                     }
                 }, this);
 
@@ -529,12 +529,12 @@ var adapter = {
     verifyRelations: function (entity, insertion) {
         if (_.isUndefined(entity)) return true;
         var promises = [];
-        _.forEach(this.relations, function (rel) {            
+        _.forEach(this.relations, function (rel) {
             if(rel.direction === 'TO')
                     return true;
-            if (!_.isUndefined(entity[rel.field])) {                
-                var query = {}, 
-                collection = process.basyt.collections[rel.entity], 
+            if (!_.isUndefined(entity[rel.field])) {
+                var query = {},
+                collection = process.basyt.collections[rel.entity],
                 queryKey = rel.foreign || collection.idField,
                 length;
 
@@ -554,13 +554,13 @@ var adapter = {
 
                 if(_.isArray(relationValue)) {
                     var uniques = _.uniq(relationValue);
-                    query[queryKey] = {$in: uniques};    
+                    query[queryKey] = {$in: uniques};
                     length = uniques.length;
                 }
                 else {
                     query[queryKey] = relationValue;
                     length = 1;
-                }                
+                }
 
                 if (insertion && _.isObject(rel.transfer)) {
                     promises.push(MongoDB.collection(rel.entity).findOne(query)
