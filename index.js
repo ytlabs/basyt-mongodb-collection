@@ -32,7 +32,7 @@ function MongoDBCollection(config, fileName) {
 
             if (properties.primary === true) {
                 if (idField !== storageDefaultIdField) {
-                    console.log(config.name + ' multiple primary key ' + field + ' ignored');
+                    GLOBAL.logger.warn(config.name + ' multiple primary key ' + field + ' ignored');
                 }
                 else {
                     idField = field;

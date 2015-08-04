@@ -5,7 +5,11 @@ GLOBAL.APP_CONFIG = {
 	mongodb: "mongodb://localhost/testdb"
 };
 
-
+GLOBAL.logger = {
+	info: console.log,
+	warn: console.log,
+	error: console.error
+};
 
 process.basyt = {
 	collections : {},

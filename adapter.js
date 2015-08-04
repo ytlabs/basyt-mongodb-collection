@@ -78,7 +78,7 @@ var adapter = {
                     var promises = [];
                     _.forEach(that.relations, function (rel) {
                         if (rel.visible === false) return true;
-                        if (_.isUndefined(result[rel.field])) return true;
+                        if (_.isUndefined(result[rel.field]) || _.isNull(result[rel.field])) return true;
                         var entity = process.basyt.collections[rel.entity], query = {},
                             queryKey = rel.foreign || entity.idField;
 
@@ -254,7 +254,7 @@ var adapter = {
                                 relIdArray[rel.field][item[rel.field]] = index;
                             }
                             else {
-                                if (!_.isUndefined(item[rel.field])) {
+                                if (!(_.isUndefined(item[rel.field]) || _.isNull(item[rel.field]))) {
                                     if (rel.isArray) {
                                         _.forEach(item[rel.field], function (elem) {
                                             if (_.isUndefined(relIdArray[rel.field][elem])) {
