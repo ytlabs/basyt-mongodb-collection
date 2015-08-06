@@ -1,8 +1,19 @@
+sudo: false
 language: node_js
 
-node_js: "0.10"
+node_js: "0.12"
+
+env:
+  global:
+    - MONGODB_VERSION=3.0.5
 
 install:
+  - wget http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-$MONGODB_VERSION.tgz
+  - tar xfz mongodb-linux-x86_64-$MONGODB_VERSION.tgz
+  - export PATH=`pwd`/mongodb-linux-x86_64-$MONGODB_VERSION/bin:$PATH
+  - mkdir -p data/db
+  - mongod --dbpath=data/db --logpath /dev/null &
+  - sleep 3
   - npm install -g mocha
   - npm install -g istanbul
   - npm install -g coveralls
@@ -10,14 +21,9 @@ install:
   - npm install
 services:
   - redis-server
-before_install:  
-  - "sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10"
-  - "echo 'deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' | sudo tee /etc/apt/sources.list.d/mongodb.list"
-  - "sudo apt-get update"
-  - "sudo apt-get install mongodb-org mongodb-org-server mongodb-org-shell mongodb-org-mongos mongodb-org-tools"
-  - sleep 15
-  - "mongo --eval 'db.runCommand({setParameter: 1, textSearchEnabled: true})' admin"
+
 script:
+  - mongo --eval 'db.hostInfo()'
   - istanbul cover _mocha --report lcovonly
 after_script:
   - cat ./coverage/lcov.info | coveralls
