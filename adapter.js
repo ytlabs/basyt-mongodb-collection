@@ -50,7 +50,7 @@ var adapter = {
                     var channelName = _.template(name)(result);
                     that.publisher.publish(channelName, JSON.stringify({
                         eventName: 'entity:update:' + that.name,
-                        data: {action: 'create', entity_id: entity_id}
+                        data: {action: 'create', entity_id: entity_id, entity: result}
                     }));
                 });
                 return that.afterSave(result, entity);
@@ -167,13 +167,14 @@ var adapter = {
                         entity_id = result.value[that.idField];
                         delete result.value._id;
                     }
+                    var entity = _.pick(result.value, that.visible_fields);
                     _.forEach(that.event_channels, function (name) {
                         that.publisher.publish(_.template(name)(result.value), JSON.stringify({
                             eventName: 'entity:update:' + that.name,
-                            data: {action: 'update', entity_id: entity_id}
+                            data: {action: 'update', entity_id: entity_id, entity: entity}
                         }));
                     });
-                    return that.afterSave(result.value, update, query, options);
+                    return that.afterSave(entity, update, query, options);
                 });
         }
     },
@@ -214,10 +215,11 @@ var adapter = {
                         entity_id = result.value[that.idField];
                         delete result.value._id;
                     }
+                    var entity = _.pick(result.value, that.visible_fields);
                     _.forEach(that.event_channels, function (name) {
                         that.publisher.publish(_.template(name)(result.value), JSON.stringify({
                             eventName: 'entity:update:' + that.name,
-                            data: {action: 'delete', entity_id: entity_id}
+                            data: {action: 'delete', entity_id: entity_id, entity: entity}
                         }));
                     });
                     return that.afterDelete(query, options);
